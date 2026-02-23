@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Tool TrendAnalyzer - Architecture</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #06060f;
+    font-family: 'DM Sans', sans-serif;
+    color: #e2e8f0;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(99,102,241,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(99,102,241,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: 0;
+    animation: gridPulse 8s ease-in-out infinite;
+  }
+
+  @keyframes gridPulse {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 60px 24px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 64px;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 20px;
+    background: rgba(99,102,241,0.15);
+    border: 1px solid rgba(99,102,241,0.4);
+    color: #a78bfa;
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 700;
+    background: linear-gradient(135deg, #6366f1 0%, #a78bfa 50%, #60a5fa 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+
+  .subtitle {
+    color: #64748b;
+    font-size: 1.1rem;
+    max-width: 560px;
+    margin: 0 auto;
+  }
+
+  /* Pipeline flow */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin-bottom: 64px;
+    animation: fadeUp 0.8s 0.2s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .pipe-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 1px solid rgba(99,102,241,0.25);
+    border-radius: 16px;
+    padding: 20px 24px;
+    min-width: 130px;
+    text-align: center;
+    transition: all 0.3s;
+    cursor: default;
+  }
+
+  .pipe-step:hover {
+    border-color: rgba(99,102,241,0.7);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(99,102,241,0.2);
+  }
+
+  .pipe-icon {
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+
+  .pipe-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .pipe-tech {
+    font-size: 0.85rem;
+    color: #a78bfa;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .arrow {
+    font-size: 1.5rem;
+    color: rgba(99,102,241,0.5);
+    padding: 0 8px;
+    animation: arrowPulse 2s ease-in-out infinite;
+  }
+
+  @keyframes arrowPulse {
+    0%, 100% { opacity: 0.4; transform: translateX(0); }
+    50% { opacity: 1; transform: translateX(4px); }
+  }
+
+  /* File cards */
+  .section-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #c7d2fe;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(99,102,241,0.4), transparent);
+  }
+
+  .files-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin-bottom: 64px;
+    animation: fadeUp 0.8s 0.4s ease both;
+  }
+
+  .file-card {
+    background: linear-gradient(135deg, #12122a, #1a1a35);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 20px;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .file-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px;
+    height: 100%;
+    border-radius: 3px 0 0 3px;
+  }
+
+  .file-card.purple::before { background: #6366f1; }
+  .file-card.teal::before   { background: #14b8a6; }
+  .file-card.amber::before  { background: #f59e0b; }
+  .file-card.rose::before   { background: #f43f5e; }
+  .file-card.sky::before    { background: #38bdf8; }
+  .file-card.violet::before { background: #8b5cf6; }
+  .file-card.green::before  { background: #22c55e; }
+
+  .file-card:hover {
+    border-color: rgba(99,102,241,0.3);
+    transform: translateX(4px);
+  }
+
+  .file-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.95rem;
+    color: #e2e8f0;
+    font-weight: 500;
+    margin-bottom: 8px;
+  }
+
+  .file-desc {
+    font-size: 0.85rem;
+    color: #64748b;
+    line-height: 1.5;
+  }
+
+  .file-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .ftag {
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    background: rgba(99,102,241,0.12);
+    color: #818cf8;
+    border: 1px solid rgba(99,102,241,0.2);
+  }
+
+  /* Commands */
+  .commands {
+    background: #0d0d1a;
+    border: 1px solid rgba(99,102,241,0.2);
+    border-radius: 16px;
+    padding: 32px;
+    animation: fadeUp 0.8s 0.6s ease both;
+    margin-bottom: 48px;
+  }
+
+  .cmd-line {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .cmd-line:last-child { border-bottom: none; }
+
+  .cmd-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: rgba(99,102,241,0.5);
+    min-width: 24px;
+    margin-top: 2px;
+  }
+
+  .cmd-content { flex: 1; }
+
+  .cmd-comment {
+    font-size: 0.75rem;
+    color: #4a5568;
+    margin-bottom: 6px;
+  }
+
+  .cmd-code {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9rem;
+    color: #a78bfa;
+    background: rgba(99,102,241,0.08);
+    padding: 8px 14px;
+    border-radius: 8px;
+    display: inline-block;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid rgba(99,102,241,0.15);
+  }
+
+  .cmd-code:hover {
+    background: rgba(99,102,241,0.15);
+    border-color: rgba(99,102,241,0.4);
+  }
+
+  .cmd-code .dollar { color: #4a5568; }
+  .cmd-code .green { color: #22c55e; }
+  .cmd-code .amber { color: #f59e0b; }
+
+  /* Free badge */
+  .free-banner {
+    background: linear-gradient(135deg, #052e16, #064e3b);
+    border: 1px solid rgba(34,197,94,0.3);
+    border-radius: 16px;
+    padding: 24px 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    animation: fadeUp 0.8s 0.8s ease both;
+  }
+
+  .free-icon { font-size: 2.5rem; }
+
+  .free-text h3 { color: #4ade80; font-size: 1.1rem; margin-bottom: 4px; }
+  .free-text p { color: #6ee7b7; font-size: 0.9rem; }
+
+  .groq-chip {
+    margin-left: auto;
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.3);
+    border-radius: 10px;
+    padding: 10px 20px;
+    text-align: center;
+  }
+
+  .groq-chip .num { font-size: 1.6rem; font-weight: 700; color: #4ade80; }
+  .groq-chip .lbl { font-size: 0.7rem; color: #6ee7b7; text-transform: uppercase; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="badge">Project Architecture</div>
+    <h1>AI Tool TrendAnalyzer</h1>
+    <p class="subtitle">Web Scraping × Generative AI — End-to-end pipeline for discovering and classifying AI tools</p>
+  </div>
+
+  <!-- Pipeline -->
+  <div class="section-title">⚡ Data Pipeline</div>
+  <div class="pipeline">
+    <div class="pipe-step">
+      <div class="pipe-icon">🌐</div>
+      <div class="pipe-label">Scrape</div>
+      <div class="pipe-tech">Playwright</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="pipe-step">
+      <div class="pipe-icon">🔍</div>
+      <div class="pipe-label">Parse</div>
+      <div class="pipe-tech">BeautifulSoup</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="pipe-step">
+      <div class="pipe-icon">🏷️</div>
+      <div class="pipe-label">Classify</div>
+      <div class="pipe-tech">Keyword + LLM</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="pipe-step">
+      <div class="pipe-icon">🤖</div>
+      <div class="pipe-label">Enrich</div>
+      <div class="pipe-tech">Groq LLaMA 3</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="pipe-step">
+      <div class="pipe-icon">🗄️</div>
+      <div class="pipe-label">Store</div>
+      <div class="pipe-tech">SQLite</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="pipe-step">
+      <div class="pipe-icon">📊</div>
+      <div class="pipe-label">Visualize</div>
+      <div class="pipe-tech">Streamlit</div>
+    </div>
+  </div>
+
+  <!-- Files -->
+  <div class="section-title">📁 Project Files</div>
+  <div class="files-grid">
+    <div class="file-card purple">
+      <div class="file-name">scraper.py</div>
+      <div class="file-desc">Playwright-powered dynamic scraper. Handles JS-rendered pages, lazy loading, and infinite scroll. Works on Futurepedia, Toolify, and more.</div>
+      <div class="file-tags"><span class="ftag">Playwright</span><span class="ftag">BeautifulSoup</span><span class="ftag">async</span></div>
+    </div>
+    <div class="file-card teal">
+      <div class="file-name">classifier.py</div>
+      <div class="file-desc">Hybrid classification engine. Keyword rules run first (fast, zero cost). LLM called only when confidence is low — optimizes API quota usage.</div>
+      <div class="file-tags"><span class="ftag">Keyword Rules</span><span class="ftag">LLM Fallback</span><span class="ftag">Confidence Score</span></div>
+    </div>
+    <div class="file-card amber">
+      <div class="file-name">llm_engine.py</div>
+      <div class="file-desc">Groq API integration using LLaMA 3.1. Handles tool classification, summarization, audience scoring, and AI-powered recommendations.</div>
+      <div class="file-tags"><span class="ftag">Groq Free API</span><span class="ftag">LLaMA 3.1</span><span class="ftag">JSON output</span></div>
+    </div>
+    <div class="file-card green">
+      <div class="file-name">database.py</div>
+      <div class="file-desc">SQLite storage layer with zero setup. Supports filtering by category, full-text search, category stats, and pipeline run logging.</div>
+      <div class="file-tags"><span class="ftag">SQLite</span><span class="ftag">Filter</span><span class="ftag">Stats</span></div>
+    </div>
+    <div class="file-card sky">
+      <div class="file-name">pipeline.py</div>
+      <div class="file-desc">Orchestrates the full pipeline: scrape → classify → save → summarize. Supports sample data mode for offline testing.</div>
+      <div class="file-tags"><span class="ftag">Orchestrator</span><span class="ftag">Scheduler</span><span class="ftag">Sample Mode</span></div>
+    </div>
+    <div class="file-card rose">
+      <div class="file-name">api.py</div>
+      <div class="file-desc">FastAPI REST API with auto-generated docs. Endpoints: /tools, /stats, /recommend, /trends, /categories.</div>
+      <div class="file-tags"><span class="ftag">FastAPI</span><span class="ftag">REST</span><span class="ftag">/docs</span></div>
+    </div>
+    <div class="file-card violet">
+      <div class="file-name">dashboard.py</div>
+      <div class="file-desc">Streamlit dashboard with pie charts, bar charts, audience heatmaps, tool explorer, and AI recommendation interface.</div>
+      <div class="file-tags"><span class="ftag">Streamlit</span><span class="ftag">Plotly</span><span class="ftag">Dark UI</span></div>
+    </div>
+  </div>
+
+  <!-- Commands -->
+  <div class="section-title">🚀 Getting Started</div>
+  <div class="commands">
+    <div class="cmd-line">
+      <div class="cmd-num">1</div>
+      <div class="cmd-content">
+        <div class="cmd-comment"># Install all dependencies</div>
+        <div class="cmd-code"><span class="dollar">$ </span>pip install -r requirements.txt && playwright install chromium</div>
+      </div>
+    </div>
+    <div class="cmd-line">
+      <div class="cmd-num">2</div>
+      <div class="cmd-content">
+        <div class="cmd-comment"># Set your FREE Groq API key (get at console.groq.com)</div>
+        <div class="cmd-code"><span class="dollar">$ </span><span class="amber">export</span> GROQ_API_KEY=<span class="green">"gsk_your_key_here"</span></div>
+      </div>
+    </div>
+    <div class="cmd-line">
+      <div class="cmd-num">3</div>
+      <div class="cmd-content">
+        <div class="cmd-comment"># Run pipeline with sample data (test without scraping)</div>
+        <div class="cmd-code"><span class="dollar">$ </span>python pipeline.py <span class="green">sample</span></div>
+      </div>
+    </div>
+    <div class="cmd-line">
+      <div class="cmd-num">4</div>
+      <div class="cmd-content">
+        <div class="cmd-comment"># Launch the dashboard</div>
+        <div class="cmd-code"><span class="dollar">$ </span>streamlit run dashboard.py</div>
+      </div>
+    </div>
+    <div class="cmd-line">
+      <div class="cmd-num">5</div>
+      <div class="cmd-content">
+        <div class="cmd-comment"># (Optional) Start the API server</div>
+        <div class="cmd-code"><span class="dollar">$ </span>uvicorn api:app --reload</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Free banner -->
+  <div class="free-banner">
+    <div class="free-icon">✅</div>
+    <div class="free-text">
+      <h3>100% Free — No Paid APIs Required</h3>
+      <p>Groq's free tier is more than enough for this project. No credit card, no OpenAI billing.</p>
+    </div>
+    <div class="groq-chip">
+      <div class="num">14,400</div>
+      <div class="lbl">Free requests / day</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
