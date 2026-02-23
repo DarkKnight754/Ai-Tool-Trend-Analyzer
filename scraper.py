@@ -9,9 +9,15 @@ Uses RELIABLE, publicly scrapeable sources:
 import asyncio
 import re
 import httpx
-from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
 from typing import List, Dict
+
+# Playwright optional — not available on Streamlit Cloud
+try:
+    from playwright.async_api import async_playwright
+    PLAYWRIGHT_AVAILABLE = True
+except ImportError:
+    PLAYWRIGHT_AVAILABLE = False
 
 
 # ── Expanded SAMPLE data (fallback + offline testing) ───────────────────────
@@ -118,10 +124,14 @@ async def scrape_huggingface_spaces() -> List[Dict]:
     return tools
 
 
-# ── Source 3: There's An AI For That (Playwright with robust selectors) ──────
+# ── Source 3: There's An AI For That (Playwright — local only) ───────────────
 async def scrape_theresanaiforthat() -> List[Dict]:
-    """Playwright scraper with multiple fallback selector strategies."""
+    """Playwright scraper — skipped automatically on Streamlit Cloud."""
     tools = []
+
+    if not PLAYWRIGHT_AVAILABLE:
+        print("[Scraper] Playwright not available (cloud mode) — skipping TAAFT")
+        return []
 
     try:
         async with async_playwright() as p:

@@ -9,15 +9,22 @@ import re
 from groq import Groq
 from typing import Dict, List
 
-# ── Load .env file automatically ─────────────────────────────────────────────
+# ── Load .env (local) or Streamlit secrets (cloud) ───────────────────────────
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
 
-# ── Groq setup ────────────────────────────────────────────────────────────────
+# ── Groq setup — works locally (.env) AND on Streamlit Cloud (secrets) ────────
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
+if not GROQ_API_KEY:
+    try:
+        import streamlit as st
+        GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
+    except Exception:
+        pass
 
 if not GROQ_API_KEY or GROQ_API_KEY == "YOUR_GROQ_API_KEY_HERE":
     print("WARNING: GROQ_API_KEY not set! Recommendation will return fallback answers.")
