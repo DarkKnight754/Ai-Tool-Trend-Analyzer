@@ -43,18 +43,32 @@ section[data-testid="stSidebar"] > div:first-child {
     padding-bottom: 2rem !important;
 }
 
-/* ── Hide broken Material Icons text on cloud ── */
-button[data-testid="collapsedControl"],
-button[data-testid="baseButton-headerNoPadding"],
-[data-testid="stSidebarCollapseButton"] {
-    font-family: 'Material Icons' !important;
+/* ── Hide broken Material Icons text on cloud — aggressive fix ── */
+[data-testid="stSidebarCollapseButton"],
+[data-testid="collapsedControl"],
+button[kind="header"],
+button[data-testid="baseButton-header"],
+button[data-testid="baseButton-headerNoPadding"] {
     font-size: 0 !important;
     color: transparent !important;
+    overflow: hidden !important;
 }
 
+/* Keep the arrow SVG icon visible */
 [data-testid="stSidebarCollapseButton"] svg,
-[data-testid="collapsedControl"] svg {
+[data-testid="collapsedControl"] svg,
+button[kind="header"] svg {
     display: block !important;
+    color: #6366f1 !important;
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* Nuclear option — hide any span showing icon name text */
+[data-testid="stSidebarCollapseButton"] span,
+[data-testid="collapsedControl"] span,
+button[kind="header"] span {
+    display: none !important;
 }
 
 /* ── Sidebar content styling ── */
