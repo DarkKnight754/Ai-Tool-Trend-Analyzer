@@ -43,6 +43,20 @@ section[data-testid="stSidebar"] > div:first-child {
     padding-bottom: 2rem !important;
 }
 
+/* ── Hide broken Material Icons text on cloud ── */
+button[data-testid="collapsedControl"],
+button[data-testid="baseButton-headerNoPadding"],
+[data-testid="stSidebarCollapseButton"] {
+    font-family: 'Material Icons' !important;
+    font-size: 0 !important;
+    color: transparent !important;
+}
+
+[data-testid="stSidebarCollapseButton"] svg,
+[data-testid="collapsedControl"] svg {
+    display: block !important;
+}
+
 /* ── Sidebar content styling ── */
 section[data-testid="stSidebar"] .stMarkdown p,
 section[data-testid="stSidebar"] label {

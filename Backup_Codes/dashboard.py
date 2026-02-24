@@ -262,32 +262,7 @@ with st.sidebar:
     selected_cat = st.selectbox("Category", cats, label_visibility="collapsed")
     search_term  = st.text_input("Search", placeholder="Search tools...", label_visibility="collapsed")
 
-    st.markdown("<hr>", unsafe_allow_html=True)
 
-    # ── Stack info ──
-    st.markdown("**⚙️ STACK**")
-    st.markdown("""
-    <div style="font-size:0.78rem; line-height:2;">
-        <span style="color:#6366f1;">●</span> <span style="color:#94a3b8;">Playwright + BeautifulSoup</span><br>
-        <span style="color:#10b981;">●</span> <span style="color:#94a3b8;">Groq LLaMA 3.1 (Free)</span><br>
-        <span style="color:#f59e0b;">●</span> <span style="color:#94a3b8;">Hybrid Classification</span><br>
-        <span style="color:#3b82f6;">●</span> <span style="color:#94a3b8;">SQLite + FastAPI</span><br>
-        <span style="color:#ec4899;">●</span> <span style="color:#94a3b8;">Streamlit Dashboard</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("<hr>", unsafe_allow_html=True)
-
-    # ── Live stats in sidebar ──
-    total = get_tool_count()
-    st.markdown(f"""
-    <div style="text-align:center; padding:12px; background:rgba(99,102,241,0.08);
-                border-radius:10px; border:1px solid rgba(99,102,241,0.15);">
-        <div style="font-size:2rem; font-weight:800; background:linear-gradient(135deg,#6366f1,#a78bfa);
-                    -webkit-background-clip:text; -webkit-text-fill-color:transparent;">{total}</div>
-        <div style="color:#64748b; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">Tools Indexed</div>
-    </div>
-    """, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -600,48 +575,102 @@ with tab3:
             if not all_tools:
                 st.error("No tools in database. Run the pipeline first from the sidebar.")
             else:
-                with st.spinner("Analyzing with Groq LLaMA 3..."):
+                with st.spinner("Finding top 5 tools..."):
                     result = recommend_tool_for_task(task_input, all_tools)
 
-                rec   = result.get("recommended_tool", "Unknown")
-                reason= result.get("reason", "")
-                alt   = result.get("alternative", "—")
-                cat   = result.get("task_category", "—")
-                method= result.get("method", "")
-                color = CATEGORY_COLORS.get(cat, "#6366f1")
+                # ── Extract top 5 tools from result ──────────────────────────
+                top5 = result.get("top5", [])
 
-                st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+                # Fallback: if LLM/keyword only returned 1, build top5 from category match
+                if not top5:
+                    task_cat   = result.get("task_category", "")
+                    rec_name   = result.get("recommended_tool", "")
+                    alt_name   = result.get("alternative", "")
+                    cat_tools  = [t for t in all_tools if t.get("category") == task_cat]
+                    other_tools= [t for t in all_tools if t.get("category") != task_cat]
+                    pool       = cat_tools + other_tools
 
-                # Result card
-                st.markdown(f"""
-                <div style="background:linear-gradient(135deg,#0d0d1a,#111128);
-                            border:1px solid rgba(99,102,241,0.3);
-                            border-top:3px solid #6366f1;
-                            border-radius:16px; padding:28px;">
+                    # Put best match first, alternative second, rest follow
+                    ordered = []
+                    for name in [rec_name, alt_name]:
+                        match = next((t for t in pool if t.get("name","").lower() == name.lower()), None)
+                        if match and match not in ordered:
+                            ordered.append(match)
+                    for t in pool:
+                        if t not in ordered:
+                            ordered.append(t)
 
-                    <div style="font-size:0.7rem; color:#6366f1; text-transform:uppercase;
-                                letter-spacing:2px; margin-bottom:8px;">✦ Best Match</div>
-                    <div style="font-size:2rem; font-weight:800; color:#e2e8f0;
-                                margin-bottom:12px; letter-spacing:-0.5px;">{rec}</div>
-                    <p style="color:#94a3b8; line-height:1.65; font-size:0.95rem; margin:0 0 20px 0;">{reason}</p>
+                    top5 = ordered[:5]
 
-                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;
-                                padding-top:16px; border-top:1px solid rgba(255,255,255,0.05);">
-                        <div style="background:#13132a; border-radius:10px; padding:12px;">
-                            <div style="color:#475569; font-size:0.68rem; text-transform:uppercase; letter-spacing:1px;">Alternative</div>
-                            <div style="color:#a78bfa; font-weight:700; font-size:0.95rem; margin-top:4px;">{alt}</div>
-                        </div>
-                        <div style="background:#13132a; border-radius:10px; padding:12px;">
-                            <div style="color:#475569; font-size:0.68rem; text-transform:uppercase; letter-spacing:1px;">Task Type</div>
-                            <div style="color:{color}; font-weight:700; font-size:0.95rem; margin-top:4px;">{cat}</div>
-                        </div>
-                        <div style="background:#13132a; border-radius:10px; padding:12px;">
-                            <div style="color:#475569; font-size:0.68rem; text-transform:uppercase; letter-spacing:1px;">Method</div>
-                            <div style="color:#10b981; font-weight:700; font-size:0.95rem; margin-top:4px;">{"🤖 Groq LLM" if "groq" in method else "🔑 Keyword"}</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                method       = str(result.get("method", ""))
+                method_label = "🤖 Groq LLM" if "groq" in method else "🔑 Keyword"
+                task_cat     = str(result.get("task_category", "—"))
+
+                # ── Header bar ───────────────────────────────────────────────
+                st.markdown(
+                    '<div style="margin-top:20px;margin-bottom:14px;display:flex;'
+                    'align-items:center;justify-content:space-between;">'
+                    '<div style="font-size:0.7rem;color:#6366f1;text-transform:uppercase;'
+                    'letter-spacing:2px;">✦ Top 5 Recommended Tools</div>'
+                    '<div style="font-size:0.7rem;color:#334155;">Task: <span style="color:#94a3b8;">'
+                    + task_cat + '</span> &nbsp;|&nbsp; ' + method_label + '</div>'
+                    '</div>',
+                    unsafe_allow_html=True
+                )
+
+                # ── Render each of the 5 tool cards ──────────────────────────
+                for rank, tool in enumerate(top5):
+                    tname   = str(tool.get("name","")).replace("<","&lt;").replace(">","&gt;")
+                    tcat    = str(tool.get("category","Other")).replace("<","&lt;").replace(">","&gt;")
+                    tdesc   = str(tool.get("summary") or tool.get("description",""))[:160]
+                    tdesc   = tdesc.replace("<","&lt;").replace(">","&gt;")
+                    tprice  = str(tool.get("pricing_hint","?")).replace("<","&lt;").replace(">","&gt;")
+                    tcolor  = CATEGORY_COLORS.get(tool.get("category",""), "#6366f1")
+                    ticon   = CATEGORY_ICONS.get(tool.get("category",""), "🔮")
+                    tasks   = tool.get("best_for_tasks") or []
+                    tbadges = "".join(
+                        '<span style="display:inline-block;padding:2px 7px;border-radius:5px;font-size:0.67rem;'
+                        'background:' + tcolor + '18;color:' + tcolor + ';border:1px solid ' + tcolor + '30;'
+                        'margin:2px 2px 2px 0;">' + str(t)[:28] + '</span>'
+                        for t in tasks[:3]
+                    )
+
+                    # Rank badge — gold for #1, silver for #2, rest normal
+                    if rank == 0:
+                        rank_color = "#f59e0b"
+                        rank_label = "🥇 Best Match"
+                        border_top = "border-top:2px solid #f59e0b;"
+                    elif rank == 1:
+                        rank_color = "#94a3b8"
+                        rank_label = "🥈 Runner Up"
+                        border_top = "border-top:1px solid rgba(255,255,255,0.08);"
+                    else:
+                        rank_color = "#475569"
+                        rank_label = f"#{rank+1}"
+                        border_top = "border-top:1px solid rgba(255,255,255,0.04);"
+
+                    card = (
+                        '<div style="background:#0d0d1a;border:1px solid rgba(255,255,255,0.06);'
+                        'border-left:3px solid ' + tcolor + ';' + border_top +
+                        'border-radius:12px;padding:16px;margin-bottom:10px;">'
+
+                        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">'
+                        '<div style="flex:1;min-width:0;">'
+                        '<div style="display:flex;align-items:center;gap:8px;">'
+                        '<span style="font-size:0.65rem;color:' + rank_color + ';font-weight:700;">' + rank_label + '</span>'
+                        '</div>'
+                        '<div style="font-size:1rem;font-weight:700;color:#e2e8f0;margin-top:3px;">' + tname + '</div>'
+                        '<div style="font-size:0.7rem;color:' + tcolor + ';margin-top:2px;">' + ticon + ' ' + tcat + '</div>'
+                        '</div>'
+                        '<div style="font-size:0.65rem;color:#334155;text-align:right;flex-shrink:0;margin-left:12px;">'
+                        + tprice +
+                        '</div></div>'
+
+                        '<p style="color:#64748b;font-size:0.8rem;line-height:1.5;margin:0 0 8px 0;">' + tdesc + '</p>'
+                        '<div>' + tbadges + '</div>'
+                        '</div>'
+                    )
+                    st.markdown(card, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -662,27 +691,34 @@ with tab4:
 
         with t1:
             st.markdown("<p style='color:#94a3b8; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;'>AI TREND ANALYSIS</p>", unsafe_allow_html=True)
-            if st.button("🔄 Generate Analysis", type="primary"):
-                with st.spinner("Generating with Groq LLaMA 3..."):
-                    trend_text = generate_trend_summary(all_tools)
-                st.session_state["trend_text"] = trend_text
 
-            if "trend_text" in st.session_state:
+            # Auto-generate on load using category stats (no button, no LLM call)
+            if stats:
+                total_t = sum(stats.values())
+                sorted_cats = sorted(stats.items(), key=lambda x: x[1], reverse=True)
+                top3 = ", ".join([f"{c} ({v} tools)" for c, v in sorted_cats[:3]])
+                least = sorted_cats[-1][0] if sorted_cats else "—"
+                dominant = sorted_cats[0][0] if sorted_cats else "—"
+                dominant_pct = round(sorted_cats[0][1] / total_t * 100) if sorted_cats else 0
+
+                trend_text = (
+                    f"{dominant} leads the landscape with {dominant_pct}% of all indexed tools, "
+                    f"reflecting strong industry demand for AI-assisted productivity in that domain. "
+                    f"The top 3 categories — {top3} — account for the majority of tools, "
+                    f"suggesting the market is consolidating around a few high-impact use cases. "
+                    f"Categories like {least} remain emerging, signaling early-stage opportunities "
+                    f"where AI adoption is still gaining traction."
+                )
+
                 st.markdown(f"""
                 <div style="background:linear-gradient(135deg,#0d1117,#0d0d1a);
                             border:1px solid rgba(99,102,241,0.2);
                             border-left:3px solid #6366f1;
-                            border-radius:14px; padding:24px; margin-top:12px;">
+                            border-radius:14px; padding:24px;">
                     <div style="color:#475569; font-size:0.7rem; text-transform:uppercase;
-                                letter-spacing:1px; margin-bottom:12px;">💡 AI Generated Insight</div>
-                    <p style="color:#cbd5e1; line-height:1.8; font-size:0.97rem; margin:0;
-                              font-style:italic;">{st.session_state['trend_text']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                <div style="color:#334155; font-size:0.9rem; padding:20px 0;">
-                    Click the button above to generate a fresh AI-powered trend analysis.
+                                letter-spacing:1px; margin-bottom:12px;">💡 Trend Insight</div>
+                    <p style="color:#cbd5e1; line-height:1.8; font-size:0.95rem; margin:0;
+                              font-style:italic;">{trend_text}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
